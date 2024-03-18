@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscaminas</title>
+  <style type="text/css">
+    .container {
+  text-align: center;
+  margin-top: 50px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 50px); /* Ajusta el tamaño de la celda aquí */
+  grid-gap: 2px;
+}
+
+.cell {
+  width: 50px; /* Mismo tamaño que el definido en grid-template-columns */
+  height: 50px; /* Mismo tamaño que el definido en grid-template-columns */
+  background-color: #ccc;
+  border: 1px solid #aaa;
+  text-align: center;
+  line-height: 50px; /* Centra el contenido verticalmente */
+  cursor: pointer;
+}
+
+.cell:hover {
+  background-color: #ddd;
+}
+
+.cell:active {
+  background-color: #bbb;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Buscaminas</h1>
+    <button onclick="iniciarJuego()">Iniciar juego</button>
+    <div id="board"></div>
+  </div>
+  <script >let filas = 5;
+    let columnas = 5;
+    let cantidadMinas = 5;
+    let tablero = [];
+    let primeraJugada = true;
+
+    function solicitarParametros() {
+      filas = parseInt(prompt("Ingrese el número de filas (mínimo 5):"));
+      filas = isNaN(filas) || filas < 5 ? 5 : filas;
+      columnas = parseInt(prompt("Ingrese el número de columnas (mínimo 5):"));
+      columnas = isNaN(columnas) || columnas < 5 ? 5 : columnas;
+      cantidadMinas = parseInt(prompt("Ingrese la cantidad de minas:"));
+      cantidadMinas = isNaN(cantidadMinas) ? 5 : cantidadMinas;
+    }
+
+    function crearTablero() {
+      tablero = [];
+      for (let i = 0; i < filas; i++) {
+        tablero[i] = [];
+        for (let j = 0; j < columnas; j++) {
+          tablero[i][j] = 0;
+        }
+      }
+    }
+
+    function colocarMinas(filaInicio, columnaInicio) {
+      let minasColocadas = 0;
+      while (minasColocadas < cantidadMinas) {
+        let fila = Math.floor(Math.random() * filas);
+        let columna = Math.floor(Math.random() * columnas);
+        if (tablero[fila][columna] !== '*') {
+          if (fila !== filaInicio || columna !== columnaInicio) { // Evitar la primera selección como mina
+            tablero[fila][columna] = '*';
+            minasColocadas++;
+          }
+        }
+      }
+    }
+
+    function contarMinasAlrededor(fila, columna) {
+      let contador = 0;
+      for (let i = Math.max(0, fila - 1); i <= Math.min(filas - 1, fila + 1); i++) {
+        for (let j = Math.max(0, columna - 1); j <= Math.min(columnas - 1, columna + 1); j++) {
+          if (tablero[i][j] === '*') {
+            contador++;
+          }
+        }
+      }
+      return contador;
+    }
+
+    function inicializarTablero() {
+      for (let i = 0; i < filas; i++) {
+        for (let j = 0; j < columnas; j++) {
+          if (tablero[i][j] !== '*') {
+            tablero[i][j] = contarMinasAlrededor(i, j);
+          }
+        }
+      }
+    }
+
+    function iniciarJuego() {
+      solicitarParametros();
+      crearTablero();
+      mostrarTablero();
+    }
+
+    function mostrarTablero() {
+      let boardHTML = '<div class="board">';
+      for (let i = 0; i < filas; i++) {
+        for (let j = 0; j < columnas; j++) {
+          boardHTML += `<div class="cell" id="cell-${i}-${j}" onclick="seleccionarCasilla(event, ${i}, ${j})" oncontextmenu="colocarBandera(event, ${i}, ${j}); return false;">?</div>`;
+        }
+      }
+      boardHTML += '</div>';
+      document.getElementById('board').innerHTML = boardHTML;
+    }
+
+    function seleccionarCasilla(event, fila, columna) {
+      if (event.button === 2) return; // Evitar acciones al hacer clic derecho
+      if (primeraJugada) {
+        primeraJugada = false;
+        colocarMinas(fila, columna); // Pasar la primera selección al colocar minas
+        inicializarTablero();
+        mostrarTablero();
+        if (tablero[fila][columna] === '*') { // Si la primera selección es una mina, recalcular tablero
+          reiniciarJuego();
+          return;
+        }
+      }
+
+      let cell = document.getElementById(`cell-${fila}-${columna}`);
+      if (tablero[fila][columna] === '*') {
+        cell.innerText = '*';
+        alert("¡Has perdido!");
+        mostrarMinas();
+        reiniciarJuego();
+      } else {
+        descubrirCasilla(fila, columna);
+        if (verificarFinJuego()) {
+          alert("¡Has ganado!");
+          reiniciarJuego();
+        }
+      }
+    }
+
+    function descubrirCasilla(fila, columna) {
+      let cell = document.getElementById(`cell-${fila}-${columna}`);
+      if (tablero[fila][columna] === 0) {
+        cell.innerText = '';
+        for (let i = Math.max(0, fila - 1); i <= Math.min(filas - 1, fila + 1); i++) {
+          for (let j = Math.max(0, columna - 1); j <= Math.min(columnas - 1, columna + 1); j++) {
+            if (tablero[i][j] !== '*' && tablero[i][j] !== 'X') {
+              descubrirCasilla(i, j);
+            }
+          }
+        }
+      } else {
+        cell.innerText = tablero[fila][columna];
+      }
+    }
+
+    function mostrarMinas() {
+      for (let i = 0; i < filas; i++) {
+        for (let j = 0; j < columnas; j++) {
+          let cell = document.getElementById(`cell-${i}-${j}`);
+          if (tablero[i][j] === '*') {
+            cell.innerText = '*';
+            cell.style.backgroundColor = 'red'; // Opcional: Cambiar color de fondo de minas al perder
+          }
+        }
+      }
+    }
+
+    function verificarFinJuego() {
+      for (let i = 0; i < filas; i++) {
+        for (let j = 0; j < columnas; j++) {
+          if (tablero[i][j] !== '*' && tablero[i][j] !== 'X' && document.getElementById(`cell-${i}-${j}`).innerText === '?') {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function colocarBandera(event, fila, columna) {
+      if (event.button !== 2) return; // Solo actuar si es clic derecho
+      let cell = document.getElementById(`cell-${fila}-${columna}`);
+      if (cell.innerText === '?') {
+        cell.classList.add('flag'); // Agregar clase de bandera
+      } else if (cell.classList.contains('flag')) {
+        cell.classList.remove('flag'); // Remover clase de bandera
+      }
+    }
+
+    function reiniciarJuego() {
+      primeraJugada = true;
+      tablero = [];
+      iniciarJuego();
+    }
+
+    iniciarJuego();</script>
+</body>
+</html>
